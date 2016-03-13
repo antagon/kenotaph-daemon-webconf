@@ -77,11 +77,11 @@
 				$("#display_interface").append (
 					"<fieldset>"
 					+ "<legend>" + $("<div/>").text (interface.name).html () + " <a href=\"#\" class=\"close\">[&times;]</a> </legend>"
-					+ "<label>Promisc mode: <input class=\"interface_promiscmode\" type=\"checkbox\" " + ((interface.promisc_mode)? "checked=\"checked\"":"") + "> </label>"
-					+ "<label>Monitor mode: <input class=\"interface_monitormode\" type=\"checkbox\" " + ((interface.monitor_mode)? "checked=\"checked\"":"") + "> </label>"
-					+ "<label>Link type: <select class=\"interface_linktype\"></select> </label>"
-					+ "<label>Channel: <select class=\"interface_channel\"></select> </label>"
-					+ "<label>Enabled: <input type=\"checkbox\" " + ((interface.enabled)? "checked=\"checked\"":"") + "> </label>"
+					+ "<label>Promisc mode: <input data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_promiscmode\" type=\"checkbox\" " + ((interface.promisc_mode)? "checked=\"checked\"":"") + "> </label>"
+					+ "<label>Monitor mode: <input data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_monitormode\" type=\"checkbox\" " + ((interface.monitor_mode)? "checked=\"checked\"":"") + "> </label>"
+					+ "<label>Link type: <select data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_linktype\"></select> </label>"
+					+ "<label>Channel: <select data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_channel\"></select> </label>"
+					+ "<label>Enabled: <input data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_enabled\" type=\"checkbox\" " + ((interface.enabled)? "checked=\"checked\"":"") + "> </label>"
 					+ "</fieldset>");
 			}
 
@@ -122,6 +122,43 @@
 
 				for ( var identity in identities )
 					add_identity_ui (identities[identity]);
+			}
+
+			function reload_src ()
+			{
+				var src = "";
+
+				// Build source tree as demanded by kenotaph-daemon config file.
+				for ( var interface in interfaces ){
+					src += "interface " + interfaces[interface].name + "\n";
+					src += "{\n";
+					src += "\tpromisc_mode = " + interfaces[interface].promisc_mode + "\n";
+					src += "\tmonitor_mode = " + interfaces[interface].monitor_mode + "\n";
+
+					if ( interfaces[interface].link_type != null )
+						src += "\tlink_type = " + interfaces[interface].link_type + "\n";
+
+					if ( interfaces[interface].channel != null )
+						src += "\tchannel = " + interfaces[interface].channel + "\n";
+
+					src += "\tenabled = " + interfaces[interface].enabled + "\n";
+
+					for ( var identity in identities ){
+						if ( identities[identity].interface.length == 0 || identities[identity].interface.indexOf (interfaces[interface].name) == -1 )
+							continue;
+
+						// TODO: use generated identity name
+						src += "\n\tdevice " + identities[identity].name + "\n";
+						src += "\t{\n";
+						src += "\t\ttimeout = " + identities[identity].timeout + "\n";
+						src += "\t\tenabled = " + identities[identity].enabled + "\n";
+						src += "\t}\n";
+					}
+
+					src += "}\n\n";
+				}
+
+				$("#display_source").val (src);
 			}
 
 			function add_interface (name)
@@ -221,6 +258,18 @@
 				return true;
 			}
 
+			function set_identity_enabled (identity, enabled)
+			{
+				if ( ! identities[identity] )
+					return false;
+
+				console.log ("set_identity_enabled (" + identity + ", " + enabled + ")");
+
+				identities[identity].enabled = enabled;
+
+				return true;
+			}
+
 			function add_device (identity, name)
 			{
 				if ( ! identities[identity] )
@@ -275,7 +324,7 @@
 				<fieldset>
 					<legend>Output</legend>
 
-					<textarea style="height:75vh;width:100%;" readonly="readonly">No output...</textarea>
+					<textarea id="display_source" style="height:75vh;width:100%;" readonly="readonly">No output...</textarea>
 				</fieldset>
 			</div>
 		</div>
@@ -283,6 +332,7 @@
 		<script type="text/javascript">
 			$(document).on ("submit", "form", function (){
 				reload_ui ();
+				reload_src ();
 				return false;
 			});
 
@@ -310,15 +360,61 @@
 				return r;
 			});
 
+			$(document).on ("change", ".interface_promiscmode", function (event){
+				var r = set_interface_promisc_mode ($(event.target).data ("interface"), $(event.target).prop ("checked"));
+
+				if ( r )
+					$(this).parents ("form:first").trigger ("submit");
+
+				return r;
+			});
+
+			$(document).on ("change", ".interface_monitormode", function (event){
+				var r = set_interface_monitor_mode ($(event.target).data ("interface"), $(event.target).prop ("checked"));
+
+				if ( r )
+					$(this).parents ("form:first").trigger ("submit");
+
+				return r;
+			});
+
+			$(document).on ("change", ".interface_enabled", function (event){
+				var r = set_interface_enabled ($(event.target).data ("interface"), $(event.target).prop ("checked"));
+
+				if ( r )
+					$(this).parents ("form:first").trigger ("submit");
+
+				return r;
+			});
+
 			$(document).on ("focus", ".interface_channel", function (event){
 			});
 
 			$(document).on ("change", ".identity_interface", function (event){
-				return set_identity_interface ($(event.target).data ("identity"), $(event.target).val ());
+				var r = set_identity_interface ($(event.target).data ("identity"), $(event.target).val ());
+
+				if ( r )
+					$(this).parents ("form:first").trigger ("submit");
+
+				return r;
 			});
 
 			$(document).on ("change", ".identity_timeout", function (event){
-				return set_identity_timeout ($(event.target).data ("identity"), $(event.target).val ());
+				var r = set_identity_timeout ($(event.target).data ("identity"), $(event.target).val ());
+
+				if ( r )
+					$(this).parents ("form:first").trigger ("submit");
+
+				return r;
+			});
+
+			$(document).on ("change", ".identity_enabled", function (event){
+				var r = set_identity_enabled ($(event.target).data ("identity"), $(event.target).prop ("checked"));
+
+				if ( r )
+					$(this).parents ("form:first").trigger ("submit");
+
+				return r;
 			});
 		</script>
 	</body>
