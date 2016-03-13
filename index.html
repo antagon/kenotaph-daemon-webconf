@@ -50,7 +50,7 @@
 			// Defaults for inputs
 			var predef = {
 				channel: [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 ],
-				linktype: [],
+				link_type: [ "APPLE_IP_OVER_IEEE1394", "ARCNET", "ARCNET_LINUX", "ATM_RFC1483", "AX25", "AX25_KISS", "BACNET_MS_TP", "BLUETOOTH_BREDR_BB", "BLUETOOTH_HCI_H4", "BLUETOOTH_HCI_H4_WITH_PHDR", "BLUETOOTH_LE_LL", "BLUETOOTH_LE_LL_WITH_PHDR", "BLUETOOTH_LINUX_MONITOR", "CAN_SOCKETCAN", "C_HDLC", "C_HDLC_WITH_DIR", "DBUS", "DOCSIS", "DVB_CI", "EN10MB", "EPON", "ERF", "FC_2", "FC_2_WITH_FRAME_DELIMS", "FDDI", "FRELAY", "FRELAY_WITH_DIR", "GPF_F", "GPF_T", "GPRS_LLC", "IEEE802", "IEEE802_11", "IEEE802_11_RADIO", "IEEE802_11_RADIO_AVS", "IEEE802_15_4", "IEEE802_15_4_NOFCS", "IEEE802_15_4_NONASK_PHY", "INFINIBAND", "IPMB_LINUX", "IPMI_HPM_2", "IPNET", "IPOIB", "IP_OVER_FC", "IPV4", "IPV6", "ISO_14443", "LAPD", "LINUX_IRDA", "LINUX_LAPD", "LINUX_SLL", "LOOP", "LTALK", "MPEG_2_TS", "MTP2", "MTP2_WITH_PHDR", "MTP3", "MUX27010", "NETANALYZER", "NETANALYZER_TRANSPARENT", "NETLINK", "NFC_LLCP", "NFLOG", "NG40", "PFLOG", "PKTAP", "PPI", "PPP", "PPP_ETHER", "PPP_PPPD", "PPP_SERIAL", "PPP_WITH_DIR", "PRISM_HEADER", "PROFIBUS_DL", "RAW", "RTAC_SERIAL", "SCCP", "SCTP", "SITA", "SLIP", "STANAG_5066_D_PDU", "SUNATM", "USB_LINUX", "USB_LINUX_MMAPPED", "USBPCAP", "USER0-DLT_USER15", "WATTSTOPPER_DLM", "ZWAVE_R1_R2", "ZWAVE_R3" ],
 				timeout: 1200,
 				promisc_mode: true,
 				monitor_mode: false,
@@ -79,10 +79,18 @@
 					+ "<legend>" + $("<div/>").text (interface.name).html () + " <a href=\"#\" class=\"close\">[&times;]</a> </legend>"
 					+ "<label>Promisc mode: <input data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_promiscmode\" type=\"checkbox\" " + ((interface.promisc_mode)? "checked=\"checked\"":"") + "> </label>"
 					+ "<label>Monitor mode: <input data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_monitormode\" type=\"checkbox\" " + ((interface.monitor_mode)? "checked=\"checked\"":"") + "> </label>"
-					+ "<label>Link type: <select data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_linktype\"></select> </label>"
-					+ "<label>Channel: <select data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_channel\"></select> </label>"
+					+ "<label>Link type: <select data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_linktype\"> <option value=\"\">--</option> </select> </label>"
+					+ "<label>Channel: <select data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_channel\"> <option value=\"0\">--</option> </select> </label>"
 					+ "<label>Enabled: <input data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_enabled\" type=\"checkbox\" " + ((interface.enabled)? "checked=\"checked\"":"") + "> </label>"
 					+ "</fieldset>");
+
+				for ( var i = 0; i < predef.channel.length; i++ ){
+					$(".interface_channel").last ().append ("<option value=\"" + predef.channel[i] + "\" " + ((predef.channel[i] == interface.channel)? "selected=\"selected\"":"") +">" + predef.channel[i] + "</option>");
+				}
+
+				for ( var i = 0; i < predef.link_type.length; i++ ){
+					$(".interface_linktype").last ().append ("<option value=\"" + predef.link_type[i] + "\" " + ((predef.link_type[i] == interface.link_type)? "selected=\"selected\"":"") +">" + predef.link_type[i] + "</option>");
+				}
 			}
 
 			function add_identity_ui (identity)
@@ -135,10 +143,10 @@
 					src += "\tpromisc_mode = " + interfaces[interface].promisc_mode + "\n";
 					src += "\tmonitor_mode = " + interfaces[interface].monitor_mode + "\n";
 
-					if ( interfaces[interface].link_type != null )
-						src += "\tlink_type = " + interfaces[interface].link_type + "\n";
+					if ( interfaces[interface].link_type != "" )
+						src += "\tlink_type = \"" + interfaces[interface].link_type + "\"\n";
 
-					if ( interfaces[interface].channel != null )
+					if ( interfaces[interface].channel > 0 )
 						src += "\tchannel = " + interfaces[interface].channel + "\n";
 
 					src += "\tenabled = " + interfaces[interface].enabled + "\n";
@@ -172,8 +180,8 @@
 					name: name,
 					monitor_mode: predef.monitor_mode,
 					promisc_mode: predef.promisc_mode,
-					link_type: null,
-					channel: null,
+					link_type: "",
+					channel: 0,
 					enabled: predef.enabled
 				};
 
@@ -212,6 +220,30 @@
 				console.log ("set_interface_enabled (" + interface + ", " + state + ")");
 
 				interfaces[interface].enabled = (state)? true:false;
+
+				return true;
+			}
+
+			function set_interface_channel (interface, channel)
+			{
+				if ( ! interfaces[interface] )
+					return false;
+
+				console.log ("set_interface_channel (" + interface + ", " + channel + ")");
+
+				interfaces[interface].channel = channel;
+
+				return true;
+			}
+
+			function set_interface_link_type (interface, link_type)
+			{
+				if ( ! interfaces[interface] )
+					return false;
+
+				console.log ("set_interface_link_type (" + interface + ", " + link_type + ")");
+
+				interfaces[interface].link_type = link_type;
 
 				return true;
 			}
@@ -293,9 +325,7 @@
 					<fieldset>
 						<legend>Interfaces</legend>
 
-						<div id="display_interface">
-							<p>No interfaces...</p>
-						</div>
+						<div id="display_interface"></div>
 
 						<div>
 							<label>New interface: <input id="interface_name" type="text" placeholder="Name"> </label>
@@ -308,9 +338,7 @@
 					<fieldset>
 						<legend>Identities</legend>
 
-						<div id="display_identity">
-							<p>No identities...</p>
-						</div>
+						<div id="display_identity"></div>
 
 						<div>
 							<label>New identity: <input id="identity_name" type="text" placeholder="Name"> </label>
@@ -324,7 +352,7 @@
 				<fieldset>
 					<legend>Output</legend>
 
-					<textarea id="display_source" style="height:75vh;width:100%;" readonly="readonly">No output...</textarea>
+					<textarea id="display_source" style="height:75vh;width:100%;" autocomplete="off" readonly="readonly">No output...</textarea>
 				</fieldset>
 			</div>
 		</div>
@@ -387,7 +415,22 @@
 				return r;
 			});
 
-			$(document).on ("focus", ".interface_channel", function (event){
+			$(document).on ("change", ".interface_channel", function (event){
+				var r = set_interface_channel ($(event.target).data ("interface"), $(event.target).val ());
+
+				if ( r )
+					$(this).parents ("form:first").trigger ("submit");
+
+				return r;
+			});
+
+			$(document).on ("change", ".interface_linktype", function (event){
+				var r = set_interface_link_type ($(event.target).data ("interface"), $(event.target).val ());
+
+				if ( r )
+					$(this).parents ("form:first").trigger ("submit");
+
+				return r;
 			});
 
 			$(document).on ("change", ".identity_interface", function (event){
