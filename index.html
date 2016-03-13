@@ -1,0 +1,326 @@
+<html>
+	<head>
+		<title>kenotaph-daemon configurator</title>
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+		<meta name="description" content="Generate a configuration file for kenotaph-daemon.">
+		<link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+		<link rel="stylesheet" type="text/css" href="style.css">
+		<style type="text/css">
+			#content fieldset {
+				margin:10px 0px 10px 0px;
+			}
+
+			#content fieldset legend {
+				margin:0px;
+				font-weight:bold;
+				padding:0px 10px 0px 10px;
+			}
+
+			#content input {
+				vertical-align:middle;
+			}
+
+			#content select {
+				vertical-align:top;
+			}
+
+			#content label {
+				cursor:pointer;
+			}
+
+			#content .left_column
+			{
+				float:left;
+				width:49%;
+				margin:0px;
+				padding:0px;
+			}
+
+			#content .right_column
+			{
+				float:right;
+				width:49%;
+				margin:0px;
+				padding:0px;
+			}
+		</style>
+
+		<script type="text/javascript" src="jquery-2.2.1.min.js"></script>
+		<script type="text/javascript">
+			// Defaults for inputs
+			var predef = {
+				channel: [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 ],
+				linktype: [],
+				timeout: 1200,
+				promisc_mode: true,
+				monitor_mode: false,
+				enabled: true
+			};
+		</script>
+
+		<script type="text/javascript">
+			var interfaces = {};
+			var identities = {};
+
+			function clear_interface_ui ()
+			{
+				$("#display_interface").empty ();
+			}
+
+			function clear_identity_ui ()
+			{
+				$("#display_identity").empty ();
+			}
+
+			function add_interface_ui (interface)
+			{
+				$("#display_interface").append (
+					"<fieldset>"
+					+ "<legend>" + $("<div/>").text (interface.name).html () + " <a href=\"#\" class=\"close\">[&times;]</a> </legend>"
+					+ "<label>Promisc mode: <input class=\"interface_promiscmode\" type=\"checkbox\" " + ((interface.promisc_mode)? "checked=\"checked\"":"") + "> </label>"
+					+ "<label>Monitor mode: <input class=\"interface_monitormode\" type=\"checkbox\" " + ((interface.monitor_mode)? "checked=\"checked\"":"") + "> </label>"
+					+ "<label>Link type: <select class=\"interface_linktype\"></select> </label>"
+					+ "<label>Channel: <select class=\"interface_channel\"></select> </label>"
+					+ "<label>Enabled: <input type=\"checkbox\" " + ((interface.enabled)? "checked=\"checked\"":"") + "> </label>"
+					+ "</fieldset>");
+			}
+
+			function add_identity_ui (identity)
+			{
+				$("#display_identity").append (
+					"<fieldset>"
+						+ "<legend>" + $("<div/>").text (identity.name).html() + " <a href=\"#\" class=\"close\">[&times;]</a> </legend>"
+						+ "<label>Interfaces: <select data-identity=\"" + $("<div/>").text (identity.name).html() + "\" class=\"identity_interface\" multiple></select> </label>"
+						+ "<label>Timeout (sec): <input data-identity=\"" + $("<div/>").text (identity.name).html() + "\" class=\"identity_timeout\" type=\"text\" size=\"4\" value=\"" + identity.timeout + "\"> </label>"
+						+ "<label>Enabled: <input data-identity=\"" + $("<div/>").text (identity.name).html() + "\" class=\"identity_enabled\" type=\"checkbox\" " + ((identity.enabled)? "checked=\"checked\"":"") + "> </label>"
+						+ "<form>"
+							+ "<fieldset>"
+								+ "<legend>Devices</legend>"
+								+ "<div class=\"display_device\">"
+								+ "<p>No devices...</p>"
+								+ "</div>"
+							+ "</fieldset>"
+						+ "</form>"
+					+ "</fieldset>"
+				);
+
+				for ( var interface in interfaces ){
+					$(".identity_interface").last ().append ("<option value=\"" + interfaces[interface].name + "\" " + ((identity.interface.indexOf (interfaces[interface].name) != -1)? "selected=\"selected\"":"") +">" + interfaces[interface].name + "</option>");
+				}
+			}
+
+			function reload_ui ()
+			{
+				console.log ("reload_ui ()");
+
+				clear_interface_ui ();
+
+				for ( var interface in interfaces )
+					add_interface_ui (interfaces[interface]);
+
+				clear_identity_ui ();
+
+				for ( var identity in identities )
+					add_identity_ui (identities[identity]);
+			}
+
+			function add_interface (name)
+			{
+				if ( interfaces[name] )
+					return false;
+
+				console.log ("add_interface (" + name + ")");
+
+				interfaces[name] = {
+					name: name,
+					monitor_mode: predef.monitor_mode,
+					promisc_mode: predef.promisc_mode,
+					link_type: null,
+					channel: null,
+					enabled: predef.enabled
+				};
+
+				return true;
+			}
+
+			function set_interface_monitor_mode (interface, state)
+			{
+				if ( ! interfaces[interface] )
+					return false;
+
+				console.log ("set_interface_monitor_mode (" + interface + ", " + state + ")");
+
+				interfaces[interface].monitor_mode = (state)? true:false;
+
+				return true;
+			}
+
+			function set_interface_promisc_mode (interface, state)
+			{
+				if ( ! interfaces[interface] )
+					return false;
+
+				console.log ("set_interface_promisc_mode (" + interface + ", " + state + ")");
+
+				interfaces[interface].promisc_mode = (state)? true:false;
+
+				return true;
+			}
+
+			function set_interface_enabled (interface, state)
+			{
+				if ( ! interfaces[interface] )
+					return false;
+
+				console.log ("set_interface_enabled (" + interface + ", " + state + ")");
+
+				interfaces[interface].enabled = (state)? true:false;
+
+				return true;
+			}
+
+			function add_identity (name)
+			{
+				if ( identities[name] )
+					return false;
+
+				console.log ("add_identity (" + name + ")");
+
+				identities[name] = {
+					name: name,
+					interface: [],
+					timeout: predef.timeout,
+					enabled: predef.enabled,
+					device: []
+				};
+
+				return true;
+			}
+
+			function set_identity_interface (identity, interface)
+			{
+				if ( ! identities[identity] )
+					return false;
+
+				console.log ("set_identity_interface (" + identity + ", " + interface + ")");
+
+				identities[identity].interface = interface;
+
+				return true;
+			}
+
+			function set_identity_timeout (identity, timeout)
+			{
+				if ( ! identities[identity] )
+					return false;
+
+				console.log ("set_identity_timeout (" + identity + ", " + timeout + ")");
+
+				identities[identity].timeout = timeout;
+
+				return true;
+			}
+
+			function add_device (identity, name)
+			{
+				if ( ! identities[identity] )
+					return false;
+
+				console.log ("add_device (" + identity + ", " + name + ")");
+
+				Array.push (identities[identity].device, name);
+
+				return true;
+			}
+		</script>
+	</head>
+	
+	<body>
+		<div id="content">
+			<h1>kenotaph-daemon configurator</h1>
+
+			<div class="left_column">
+				<form>
+					<fieldset>
+						<legend>Interfaces</legend>
+
+						<div id="display_interface">
+							<p>No interfaces...</p>
+						</div>
+
+						<div>
+							<label>New interface: <input id="interface_name" type="text" placeholder="Name"> </label>
+							<button id="interface_add">OK</button>
+						</div>
+					</fieldset>
+				</form>
+
+				<form>
+					<fieldset>
+						<legend>Identities</legend>
+
+						<div id="display_identity">
+							<p>No identities...</p>
+						</div>
+
+						<div>
+							<label>New identity: <input id="identity_name" type="text" placeholder="Name"> </label>
+							<button id="identity_add">OK</button>
+						</div>
+					</fieldset>
+				</form>
+			</div>
+
+			<div class="right_column">
+				<fieldset>
+					<legend>Output</legend>
+
+					<textarea style="height:75vh;width:100%;" readonly="readonly">No output...</textarea>
+				</fieldset>
+			</div>
+		</div>
+
+		<script type="text/javascript">
+			$(document).on ("submit", "form", function (){
+				reload_ui ();
+				return false;
+			});
+
+			$(document).on ("click", "#interface_add", function (){
+				if ( $("#interface_name").val ().length == 0 )
+					return false;
+
+				var r = add_interface ($("#interface_name").val ());
+
+				if ( r )
+					$("#interface_name").val ("");
+
+				return r;
+			});
+
+			$(document).on ("click", "#identity_add", function (){
+				if ( $("#identity_name").val ().length == 0 )
+					return false;
+
+				var r = add_identity ($("#identity_name").val ());
+
+				if ( r )
+					$("#identity_name").val ("");
+
+				return r;
+			});
+
+			$(document).on ("focus", ".interface_channel", function (event){
+			});
+
+			$(document).on ("change", ".identity_interface", function (event){
+				return set_identity_interface ($(event.target).data ("identity"), $(event.target).val ());
+			});
+
+			$(document).on ("change", ".identity_timeout", function (event){
+				return set_identity_timeout ($(event.target).data ("identity"), $(event.target).val ());
+			});
+		</script>
+	</body>
+</html>
+
