@@ -75,7 +75,7 @@
 			function add_interface_ui (interface)
 			{
 				$("#display_interface").append (
-					"<fieldset>"
+					"<fieldset data-interface=\"" + $("<div/>").text (interface.name).html () + "\">"
 					+ "<legend>" + $("<div/>").text (interface.name).html () + " <a href=\"#\" class=\"close\">[&times;]</a> </legend>"
 					+ "<label>Promisc mode: <input data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_promiscmode\" type=\"checkbox\" " + ((interface.promisc_mode)? "checked=\"checked\"":"") + "> </label>"
 					+ "<label>Monitor mode: <input data-interface=\"" + $("<div/>").text (interface.name).html() + "\" class=\"interface_monitormode\" type=\"checkbox\" " + ((interface.monitor_mode)? "checked=\"checked\"":"") + "> </label>"
@@ -96,7 +96,7 @@
 			function add_identity_ui (identity)
 			{
 				$("#display_identity").append (
-					"<fieldset>"
+					"<fieldset data-identity=\"" + $("<div/>").text (identity.name).html () + "\">"
 						+ "<legend>" + $("<div/>").text (identity.name).html() + " <a href=\"#\" class=\"close\">[&times;]</a> </legend>"
 						+ "<label>Interfaces: <select data-identity=\"" + $("<div/>").text (identity.name).html() + "\" class=\"identity_interface\" multiple></select> </label>"
 						+ "<label>Timeout (sec): <input data-identity=\"" + $("<div/>").text (identity.name).html() + "\" class=\"identity_timeout\" type=\"text\" size=\"4\" value=\"" + identity.timeout + "\"> </label>"
@@ -158,6 +158,7 @@
 						// TODO: use generated identity name
 						src += "\n\tdevice " + identities[identity].name + "\n";
 						src += "\t{\n";
+						src += "\t\tmatch = \"\"\n";
 						src += "\t\ttimeout = " + identities[identity].timeout + "\n";
 						src += "\t\tenabled = " + identities[identity].enabled + "\n";
 						src += "\t}\n";
@@ -184,6 +185,16 @@
 					channel: 0,
 					enabled: predef.enabled
 				};
+
+				return true;
+			}
+
+			function remove_interface (name)
+			{
+				if ( ! interfaces[name] )
+					return false;
+
+				delete interfaces[name];
 
 				return true;
 			}
@@ -262,6 +273,16 @@
 					enabled: predef.enabled,
 					device: []
 				};
+
+				return true;
+			}
+
+			function remove_identity (name)
+			{
+				if ( ! identities[name] )
+					return false;
+
+				delete identities[name];
 
 				return true;
 			}
@@ -453,6 +474,23 @@
 
 			$(document).on ("change", ".identity_enabled", function (event){
 				var r = set_identity_enabled ($(event.target).data ("identity"), $(event.target).prop ("checked"));
+
+				if ( r )
+					$(this).parents ("form:first").trigger ("submit");
+
+				return r;
+			});
+
+			$(document).on ("click", ".close", function (event){
+				var r = false;
+
+				if ( $(this).parents ("fieldset:first").data ("identity") ){
+					r = remove_identity ($(this).parents ("fieldset:first").data ("identity"));
+				} else if ( $(this).parents ("fieldset:first").data ("interface") ){
+					r = remove_interface ($(this).parents ("fieldset:first").data ("interface"));
+				} else {
+					r = console.log ("undefined data type for fieldset...");
+				}
 
 				if ( r )
 					$(this).parents ("form:first").trigger ("submit");
