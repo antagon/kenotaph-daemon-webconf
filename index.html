@@ -59,6 +59,18 @@
 		</script>
 
 		<script type="text/javascript">
+			function is_ipaddr (str)
+			{
+				return str.match (/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$/);
+			}
+
+			function is_hwaddr (str)
+			{
+				return str.match (/^[a-fA-F0-9]{1,2}[:.-]{1}[a-fA-F0-9]{1,2}[:.-]{1}[a-fA-F0-9]{1,2}[:.-]{1}[a-fA-F0-9]{1,2}[:.-]{1}[a-fA-F0-9]{1,2}[:.-]{1}[a-fA-F0-9]{1,2}$/);
+			}
+		</script>
+
+		<script type="text/javascript">
 			var interfaces = {};
 			var identities = {};
 
@@ -101,19 +113,21 @@
 						+ "<label>Interfaces: <select data-identity=\"" + $("<div/>").text (identity.name).html() + "\" class=\"identity_interface\" multiple></select> </label>"
 						+ "<label>Timeout (sec): <input data-identity=\"" + $("<div/>").text (identity.name).html() + "\" class=\"identity_timeout\" type=\"text\" size=\"4\" value=\"" + identity.timeout + "\"> </label>"
 						+ "<label>Enabled: <input data-identity=\"" + $("<div/>").text (identity.name).html() + "\" class=\"identity_enabled\" type=\"checkbox\" " + ((identity.enabled)? "checked=\"checked\"":"") + "> </label>"
-						+ "<form>"
-							+ "<fieldset>"
+							+ "<fieldset data-identity=\"" + $("<div/>").text (identity.name).html () + "\">"
 								+ "<legend>Devices</legend>"
-								+ "<div class=\"display_device\">"
-								+ "<p>No devices...</p>"
-								+ "</div>"
+								+ "<div class=\"display_device\"></div>"
+								+ "<label>New device: <input class=\"device_name\" type=\"text\" placeholder=\"HW or IP address or Hostname\"> </label>"
+								+ "<button class=\"device_add\">OK</button>"
 							+ "</fieldset>"
-						+ "</form>"
 					+ "</fieldset>"
 				);
 
 				for ( var interface in interfaces ){
 					$(".identity_interface").last ().append ("<option value=\"" + interfaces[interface].name + "\" " + ((identity.interface.indexOf (interfaces[interface].name) != -1)? "selected=\"selected\"":"") +">" + interfaces[interface].name + "</option>");
+				}
+
+				for ( var i = 0; i < identity.device.length; i++ ){
+					$(".display_device").last ().append ("<p>" + identity.device[i] + " <a href=\"#\" class=\"close\">[&times;]</a> </p>");
 				}
 			}
 
@@ -158,7 +172,22 @@
 						// TODO: use generated identity name
 						src += "\n\tdevice " + identities[identity].name + "\n";
 						src += "\t{\n";
-						src += "\t\tmatch = \"\"\n";
+
+						var bpf_src = [];
+
+						for ( var i = 0; i < identities[identity].device.length; i++ ){
+							if ( is_ipaddr (identities[identity].device[i]) ){
+								bpf_src.push ("(ip host " + identities[identity].device[i] + ")");
+							} else if ( is_hwaddr (identities[identity].device[i]) ){
+								bpf_src.push ("(ether host " + identities[identity].device[i] + ")");
+							} else {
+								bpf_src.push ("(" + identities[identity].device[i] + ")");
+							}
+						}
+
+						bpf_src = bpf_src.join (" or ");
+
+						src += "\t\tmatch = \"" + bpf_src + "\"\n";
 						src += "\t\ttimeout = " + identities[identity].timeout + "\n";
 						src += "\t\tenabled = " + identities[identity].enabled + "\n";
 						src += "\t}\n";
@@ -166,6 +195,9 @@
 
 					src += "}\n\n";
 				}
+
+				if ( src.length == 0 )
+					src = "No output...";
 
 				$("#display_source").val (src);
 			}
@@ -193,6 +225,8 @@
 			{
 				if ( ! interfaces[name] )
 					return false;
+
+				console.log ("remove_interface (" + name + ")");
 
 				delete interfaces[name];
 
@@ -282,6 +316,8 @@
 				if ( ! identities[name] )
 					return false;
 
+				console.log ("remove_identity (" + name + ")");
+
 				delete identities[name];
 
 				return true;
@@ -328,9 +364,27 @@
 				if ( ! identities[identity] )
 					return false;
 
+				if ( identities[identity].device.indexOf (name) != -1 )
+					return false;
+
 				console.log ("add_device (" + identity + ", " + name + ")");
 
 				Array.push (identities[identity].device, name);
+
+				return true;
+			}
+
+			function remove_device (identity, name)
+			{
+				if ( ! identities[identity] )
+					return false;
+
+				console.log ("remove_device (" + identity + ", " + name + ")");
+
+				var r = identities[identity].device.indexOf (name);
+
+				if ( r > -1 )
+					delete identities[identity].device[r];
 
 				return true;
 			}
@@ -405,6 +459,20 @@
 
 				if ( r )
 					$("#identity_name").val ("");
+
+				return r;
+			});
+
+			$(document).on ("click", ".device_add", function (event){
+				var val = $(event.target).parent ().find (".device_name").val ();
+
+				if ( val.length == 0 )
+					return false;
+
+				var r = add_device ($(event.target).parents ("fieldset:first").data ("identity"), val);
+
+				if ( r )
+					$(event.target).parent ().find (".device_name").val ("");
 
 				return r;
 			});
